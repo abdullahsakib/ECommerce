@@ -143,12 +143,13 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
 
+from decouple import config
+
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 
 # EMAIL_HOST_USER = env("EMAIL_HOST_USER")
 # EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
-
-EMAIL_HOST_USER="abdullahsakib33@gmail.com"#env("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD="juxoxnvaxeigjoxm"#env("EMAIL_HOST_PASSWORD")#
 
 
 SSLCOMMERZ_IS_SANDBOX=True
@@ -157,4 +158,4 @@ SSLCOMMERZ_STORE_PASS="alsal681df9d4ec806@ssl"
 
 
 DEFAULT_FROM_EMAIL = 'no-reply@example.com'
-SITE_URL = 'http://localhost:8000'  # or your production domain
+SITE_URL = 'http://localhost:8000'  
