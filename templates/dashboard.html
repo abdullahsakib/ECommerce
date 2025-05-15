@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - E-Shop{% endblock %}
+{% block content %}
+<h2>Your Dashboard</h2>
+<h4>Orders</h4>
+<ul>
+    {% for order in orders %}
+        <li>{{ order.product.name }} - Quantity: {{ order.quantity }} - ৳{{ order.total_price }}</li>
+    {% empty %}
+        <li>No orders yet.</li>
+    {% endfor %}
+</ul>
+<h4>Reviews</h4>
+<ul>
+    {% for review in reviews %}
+        <li>{{ review.product.name }} - "{{ review.review_text }}"</li>
+    {% empty %}
+        <li>No reviews yet.</li>
+    {% endfor %}
+</ul>
+{% endblock %}

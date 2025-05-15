@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}{{ product.name }} - E-Shop{% endblock %}
+{% block content %}
+<div class="card mb-4">
+    <img src="{{ product.image.url }}" class="card-img-top" alt="...">
+    <div class="card-body">
+        <h2>{{ product.name }}</h2>
+        <p>{{ product.short_description }}</p>
+        {% if product.is_new_arrival %}<span class="badge bg-success">New Arrival</span>{% endif %}
+        <p>
+            <del>৳{{ product.old_price }}</del>
+            <strong>৳{{ product.new_price }}</strong>
+        </p>
+        <a href="/add-to-cart/{{ product.id }}/" class="btn btn-success">Add to Cart</a>
+    </div>
+</div>
+<h4>Reviews</h4>
+<ul>
+    {% for review in product.review_set.all %}
+        <li><strong>{{ review.user.email }}</strong>: {{ review.review_text }}</li>
+    {% empty %}
+        <li>No reviews yet.</li>
+    {% endfor %}
+</ul>
+<a href="/product/{{ product.id }}/review/" class="btn btn-outline-primary">Add Review</a>
+{% endblock %}

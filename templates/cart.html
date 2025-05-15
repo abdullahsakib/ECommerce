@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Cart - E-Shop{% endblock %}
+{% block content %}
+<h2>Your Cart</h2>
+<table class="table">
+    <thead>
+        <tr><th>Product</th><th>Quantity</th><th>Price</th></tr>
+    </thead>
+    <tbody>
+        {% for item in cart_items %}
+        <tr>
+            <td>{{ item.product.name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>৳{{ item.product.new_price|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<h4>Total: ৳{{ total|floatformat:2 }}</h4>
+<a href="/checkout/" class="btn btn-primary">Checkout</a>
+{% endblock %}
