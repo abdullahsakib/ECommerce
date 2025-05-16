@@ -20,3 +20,9 @@ class ReviewForm(forms.ModelForm):
     class Meta:
         model = Review
         fields = ['review_text']
+
+
+class ProfileForm(forms.ModelForm):
+    class Meta:
+        model = CustomUser
+        fields = ['first_name', 'last_name', 'phone', 'address_line_1','address_line_2','city','postcode','country']

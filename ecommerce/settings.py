@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     'shop',  
     'crispy_forms',
+    'crispy_bootstrap5',
 ]
 
 MIDDLEWARE = [
@@ -154,8 +155,12 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 
 SSLCOMMERZ_IS_SANDBOX=True
 SSLCOMMERZ_STORE_ID="alsal681df9d4ec806"
-SSLCOMMERZ_STORE_PASS="alsal681df9d4ec806@ssl"
+SSLCOMMERZ_STORE_PASSWORD="alsal681df9d4ec806@ssl"
 
 
 DEFAULT_FROM_EMAIL = 'no-reply@example.com'
 SITE_URL = 'http://localhost:8000'  
+
+# Crispy Forms settings
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+CRISPY_TEMPLATE_PACK = "bootstrap5"

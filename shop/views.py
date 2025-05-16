@@ -6,7 +6,13 @@ from .models import Product, Cart, Order, Review, CustomUser
 from .forms import RegisterForm, LoginForm, ReviewForm, ProfileForm
 from django.core.mail import send_mail
 from django.conf import settings
-# from sslcommerz_python.payment import SSLCSession
+#from sslcommerz_python.payment import SSLCSession
+from sslcommerz_python_api import SSLCSession
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+
+
 from decimal import Decimal
 from .utils import send_verification_email, verify_token
 
@@ -29,12 +35,6 @@ def register(request):
             user.is_active = False
             user.save()
             send_verification_email(user)
-            # send_mail(
-            #     'Verify your account',
-            #     'Please verify your email to activate your account.',
-            #     settings.DEFAULT_FROM_EMAIL,
-            #     [user.email],
-            # )
             messages.success(request, 'Check your email for verification.')
             return redirect('login')
     else:
@@ -84,7 +84,7 @@ def cart_view(request):
     total = sum(item.product.new_price * item.quantity for item in cart_items)
     return render(request, 'cart.html', {'cart_items': cart_items, 'total': total})
 
-# # Checkout and payment
+# Checkout and payment
 # @login_required
 # def checkout(request):
 #     cart_items = Cart.objects.filter(user=request.user)
@@ -126,6 +126,109 @@ def cart_view(request):
 #     response_data = mypayment.init_payment()
 #     return redirect(response_data['GatewayPageURL'])
 
+
+def checkout(request):
+    mypayment = SSLCSession(
+        sslc_is_sandbox=True,
+        sslc_store_id="alsal681df9d4ec806",
+        sslc_store_pass="alsal681df9d4ec806@ssl",
+    )
+
+    status_url = request.build_absolute_uri("sslc/status")
+
+    mypayment.set_urls(
+        success_url=status_url,
+        fail_url=status_url,
+        cancel_url=status_url,
+        ipn_url=status_url,
+    )
+
+    
+    mypayment.set_product_integration(
+        total_amount=100.00,
+        currency='BDT',
+        product_category='clothing',
+        product_name='T-shirt',
+        num_of_item=1,
+        shipping_method='Courier',
+        product_profile='general'
+    )
+
+    mypayment.set_customer_info(
+        name='Test Customer',
+        email='test@example.com',
+        address1='Dhaka',
+        address2='Dhaka',
+        city='Dhaka',
+        postcode='1216',
+        country='Bangladesh',
+        phone='01711111111'
+    )
+
+    mypayment.set_shipping_info(
+        shipping_to='Customer Name',
+        address='Dhaka',
+        city='Dhaka',
+        postcode='1216',
+        country='Bangladesh'
+    )
+
+    response_data = mypayment.init_payment()
+
+    # ✅ Safe access
+    if response_data.get('status') == 'SUCCESS':
+        return redirect(response_data['GatewayPageURL'])
+    else:
+        return HttpResponse(f"SSLCommerz Error: {response_data}", status=400)
+
+@csrf_exempt
+def sslc_status(request):
+    if request.method == 'POST':
+        data = request.POST
+        status = data.get('status')
+        val_id = data.get('val_id')
+        tran_id = data.get('tran_id')
+        amount = data.get('amount')
+        currency = data.get('currency')
+
+        print("SSLCommerz Response:", data)
+
+        if status == 'VALID':
+            # You may add validation with SSLCommerz here using val_id
+
+            # Simulate calling payment_success logic manually:
+            if request.user.is_authenticated:
+                cart_items = Cart.objects.filter(user=request.user)
+                for item in cart_items:
+                    Order.objects.create(
+                        user=request.user,
+                        product=item.product,
+                        quantity=item.quantity,
+                        total_price=item.product.new_price * item.quantity,
+                        is_paid=True
+                    )
+                    item.product.stock -= item.quantity
+                    item.product.save()
+                cart_items.delete()
+                return JsonResponse({'status': 'Payment success, order placed'}, status=200)
+            else:
+                return JsonResponse({'error': 'User not authenticated'}, status=403)
+
+        return JsonResponse({'status': 'Payment not valid'}, status=400)
+    
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
+
+# @csrf_exempt
+# def sslc_status(request):
+#     if request.method == 'POST':
+#         # Process payment status from SSLCommerz
+#         data = request.POST
+#         # You can log or handle the data here
+#         print("SSLCommerz Response:", data)
+#         return JsonResponse({'status': 'received'}, status=200)
+#     return JsonResponse({'error': 'Invalid method'}, status=405)
+
 # # Payment success
 # @login_required
 # def payment_success(request):
@@ -144,6 +247,8 @@ def cart_view(request):
 #     messages.success(request, 'Payment successful! Order placed.')
 #     return redirect('dashboard')
 
+
+
 # Dashboard
 @login_required
 def dashboard(request):
@@ -151,17 +256,6 @@ def dashboard(request):
     reviews = Review.objects.filter(user=request.user)
     return render(request, 'dashboard.html', {'orders': orders, 'reviews': reviews})
 
-# Profile
-@login_required
-def profile_view(request):
-    if request.method == 'POST':
-        form = ProfileForm(request.POST, instance=request.user)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Profile updated.')
-    else:
-        form = ProfileForm(instance=request.user)
-    return render(request, 'profile.html', {'form': form})
 
 # Review
 @login_required
@@ -178,3 +272,18 @@ def review_create(request, pk):
     else:
         form = ReviewForm()
     return render(request, 'review_form.html', {'form': form})
+
+
+# Profile
+@login_required
+def profile_view(request):
+    if request.method == 'POST':
+        form = ProfileForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Profile updated.')
+    else:
+        form = ProfileForm(instance=request.user)
+    return render(request, 'profile.html', {'form': form})
+
+
