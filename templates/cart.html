@@ -1,21 +1,30 @@
 {% extends 'base.html' %}
+{% load cart_extras %}  
+
 {% block title %}Cart - E-Shop{% endblock %}
+
 {% block content %}
 <h2>Your Cart</h2>
-<table class="table">
-    <thead>
-        <tr><th>Product</th><th>Quantity</th><th>Price</th></tr>
-    </thead>
-    <tbody>
+<form method="post" action="{% url 'update_cart' %}">
+    {% csrf_token %}
+    <table class="table">
+        <thead>
+            <tr><th>Product</th><th>Quantity</th><th>Price</th></tr>
+        </thead>
+        <tbody>
         {% for item in cart_items %}
         <tr>
             <td>{{ item.product.name }}</td>
-            <td>{{ item.quantity }}</td>
-            <td>৳{{ item.product.new_price|floatformat:2 }}</td>
+            <td>
+                <input type="number" name="quantity_{{ item.id }}" value="{{ item.quantity }}" min="1" class="form-control" style="width: 80px;">
+            </td>
+            <td>৳{{ item.product.new_price|multiply:item.quantity|floatformat:2 }}</td>
         </tr>
         {% endfor %}
-    </tbody>
-</table>
-<h4>Total: ৳{{ total|floatformat:2 }}</h4>
-<a href="/checkout/" class="btn btn-primary">Checkout</a>
+        </tbody>
+    </table>
+    <h4>Total: ৳{{ total|floatformat:2 }}</h4>
+    <button type="submit" class="btn btn-success">Update Cart</button>
+    <a href="{% url 'checkout' %}" class="btn btn-primary">Checkout</a>
+</form>
 {% endblock %}

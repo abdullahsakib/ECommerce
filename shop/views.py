@@ -16,6 +16,9 @@ from django.http import JsonResponse
 from decimal import Decimal
 from .utils import send_verification_email, verify_token
 
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
 # Home view
 def home(request):
     products = Product.objects.all()
@@ -40,7 +43,7 @@ def register(request):
     else:
         form = RegisterForm()
     return render(request, 'register.html', {'form': form})
-
+# verify email
 def verify_email(request, token):
     user_id = verify_token(token)
     if user_id:
@@ -53,7 +56,6 @@ def verify_email(request, token):
         messages.error(request, 'Verification link expired or invalid.')
         return redirect('register')
     
-
 
 # Login view
 def login_view(request):
@@ -79,52 +81,29 @@ def add_to_cart(request, pk):
     return redirect('cart')
 
 @login_required
+def update_cart(request):
+    if request.method == 'POST':
+        cart_items = Cart.objects.filter(user=request.user)
+        for item in cart_items:
+            quantity_key = f'quantity_{item.id}'
+            try:
+                quantity = int(request.POST.get(quantity_key))
+                if quantity > 0:
+                    item.quantity = quantity
+                    item.save()
+                else:
+                    item.delete()  # delete item if quantity is 0
+            except (ValueError, TypeError):
+                continue
+    return redirect('cart')
+
+
+@login_required
 def cart_view(request):
     cart_items = Cart.objects.filter(user=request.user)
     total = sum(item.product.new_price * item.quantity for item in cart_items)
     return render(request, 'cart.html', {'cart_items': cart_items, 'total': total})
 
-# Checkout and payment
-# @login_required
-# def checkout(request):
-#     cart_items = Cart.objects.filter(user=request.user)
-#     if not cart_items:
-#         return redirect('home')
-
-#     total = sum(item.product.new_price * item.quantity for item in cart_items)
-
-#     store_id = settings.SSLCOMMERZ_STORE_ID
-#     store_pass = settings.SSLCOMMERZ_STORE_PASSWORD
-#     mypayment = SSLCSession(sslc_is_sandbox=True, sslc_store_id=store_id, sslc_store_pass=store_pass)
-
-#     mypayment.set_urls(
-#         success_url=settings.SITE_URL + '/payment-success/',
-#         fail_url=settings.SITE_URL + '/payment-fail/',
-#         cancel_url=settings.SITE_URL + '/cart/'
-#     )
-
-#     mypayment.set_product_integration(
-#         total_amount=Decimal(total),
-#         currency='BDT',
-#         product_category='Ecommerce',
-#         product_name='Cart Order',
-#         num_of_item=len(cart_items),
-#         shipping_method='Courier',
-#         product_profile='general'
-#     )
-
-#     mypayment.set_customer_info(
-#         name=request.user.email,
-#         email=request.user.email,
-#         address1='N/A',
-#         city='Dhaka',
-#         postcode='1200',
-#         country='Bangladesh',
-#         phone='01234567890'
-#     )
-
-#     response_data = mypayment.init_payment()
-#     return redirect(response_data['GatewayPageURL'])
 
 
 def checkout(request):
@@ -173,9 +152,13 @@ def checkout(request):
         country='Bangladesh'
     )
 
+    mypayment.set_additional_values(
+        value_a=str(request.user.id)
+    )
+
     response_data = mypayment.init_payment()
 
-    # ✅ Safe access
+    
     if response_data.get('status') == 'SUCCESS':
         return redirect(response_data['GatewayPageURL'])
     else:
@@ -186,75 +169,47 @@ def sslc_status(request):
     if request.method == 'POST':
         data = request.POST
         status = data.get('status')
-        val_id = data.get('val_id')
-        tran_id = data.get('tran_id')
-        amount = data.get('amount')
-        currency = data.get('currency')
-
-        print("SSLCommerz Response:", data)
 
         if status == 'VALID':
-            # You may add validation with SSLCommerz here using val_id
+            user_id = data.get('value_a')
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return JsonResponse({'error': 'User not found'}, status=404)
 
-            # Simulate calling payment_success logic manually:
-            if request.user.is_authenticated:
-                cart_items = Cart.objects.filter(user=request.user)
-                for item in cart_items:
-                    Order.objects.create(
-                        user=request.user,
-                        product=item.product,
-                        quantity=item.quantity,
-                        total_price=item.product.new_price * item.quantity,
-                        is_paid=True
-                    )
-                    item.product.stock -= item.quantity
-                    item.product.save()
-                cart_items.delete()
-                return JsonResponse({'status': 'Payment success, order placed'}, status=200)
-            else:
-                return JsonResponse({'error': 'User not authenticated'}, status=403)
+            cart_items = Cart.objects.filter(user=user)
+            for item in cart_items:
+                Order.objects.create(
+                    user=user,
+                    product=item.product,
+                    quantity=item.quantity,
+                    total_price=item.product.new_price * item.quantity,
+                    is_paid=True
+                )
+                item.product.stock -= item.quantity
+                item.product.save()
+            cart_items.delete()
+            return JsonResponse({'status': 'Payment success, order placed'}, status=200)
 
         return JsonResponse({'status': 'Payment not valid'}, status=400)
-    
+
     return JsonResponse({'error': 'Invalid method'}, status=405)
-
-
-# @csrf_exempt
-# def sslc_status(request):
-#     if request.method == 'POST':
-#         # Process payment status from SSLCommerz
-#         data = request.POST
-#         # You can log or handle the data here
-#         print("SSLCommerz Response:", data)
-#         return JsonResponse({'status': 'received'}, status=200)
-#     return JsonResponse({'error': 'Invalid method'}, status=405)
-
-# # Payment success
-# @login_required
-# def payment_success(request):
-#     cart_items = Cart.objects.filter(user=request.user)
-#     for item in cart_items:
-#         Order.objects.create(
-#             user=request.user,
-#             product=item.product,
-#             quantity=item.quantity,
-#             total_price=item.product.new_price * item.quantity,
-#             is_paid=True
-#         )
-#         item.product.stock -= item.quantity
-#         item.product.save()
-#     cart_items.delete()
-#     messages.success(request, 'Payment successful! Order placed.')
-#     return redirect('dashboard')
 
 
 
 # Dashboard
+
 @login_required
 def dashboard(request):
-    orders = Order.objects.filter(user=request.user)
-    reviews = Review.objects.filter(user=request.user)
-    return render(request, 'dashboard.html', {'orders': orders, 'reviews': reviews})
+    user = request.user
+    orders = Order.objects.filter(user=user).order_by('-created_at')[:5]
+    reviews = Review.objects.filter(user=user).order_by('-created_at')[:5]
+
+    return render(request, 'dashboard.html', {
+        'user': user,
+        'orders': orders,
+        'reviews': reviews,
+    })
 
 
 # Review
@@ -287,3 +242,8 @@ def profile_view(request):
     return render(request, 'profile.html', {'form': form})
 
 
+
+def logout_view(request):
+    logout(request)
+    messages.success(request, "You have been logged out.")
+    return redirect('login')  

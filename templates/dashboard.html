@@ -1,15 +1,26 @@
 {% extends 'base.html' %}
 {% block title %}Dashboard - E-Shop{% endblock %}
 {% block content %}
-<h2>Your Dashboard</h2>
-<h4>Orders</h4>
-<ul>
-    {% for order in orders %}
-        <li>{{ order.product.name }} - Quantity: {{ order.quantity }} - ৳{{ order.total_price }}</li>
-    {% empty %}
-        <li>No orders yet.</li>
-    {% endfor %}
-</ul>
+
+<div class="container mt-4">
+    <h2>Welcome, {{ user.first_name|default:user.email }}!</h2>
+
+    <hr>
+
+    <h4>📦 Recent Orders</h4>
+    {% if orders %}
+        <ul class="list-group mb-4">
+            {% for order in orders %}
+                <li class="list-group-item">
+                    Order #{{ order.id }} -{{order.product }} - {{ order.created_at|date:"Y-m-d" }} - Quantity: {{ order.quantity }} - <strong>৳{{ order.total_price }}</strong> - Paid: {{ order.is_paid }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No recent orders.</p>
+    {% endif %}
+
+
 <h4>Reviews</h4>
 <ul>
     {% for review in reviews %}
@@ -18,4 +29,5 @@
         <li>No reviews yet.</li>
     {% endfor %}
 </ul>
+</div>
 {% endblock %}
