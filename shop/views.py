@@ -109,8 +109,8 @@ def cart_view(request):
 def checkout(request):
     mypayment = SSLCSession(
         sslc_is_sandbox=True,
-        sslc_store_id="alsal681df9d4ec806",
-        sslc_store_pass="alsal681df9d4ec806@ssl",
+        sslc_store_id=settings.SSLCOMMERZ_STORE_ID,
+        sslc_store_pass=settings.SSLCOMMERZ_STORE_PASSWORD,
     )
 
     status_url = request.build_absolute_uri("sslc/status")
